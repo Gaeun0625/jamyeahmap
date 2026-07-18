@@ -154,6 +154,36 @@
     border:2px dashed var(--gold-line); border-radius:12px; font-size:14px;
   }
 
+  /* ---------- 이용 약속(재미있는 약관) 화면 ---------- */
+  .big-seal{
+    width:64px; height:64px; border-radius:50%;
+    background:var(--seal); color:var(--note);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:30px;
+    margin:14px auto; box-shadow:0 3px 8px rgba(59,46,34,0.35);
+    border:3px solid rgba(255,255,255,0.15);
+    transform:rotate(-6deg);
+  }
+  .terms-list{ margin-bottom:18px; }
+  .terms-item{
+    font-size:13.5px; line-height:1.6; color:var(--ink);
+    padding:11px 2px; border-bottom:1px dashed var(--paper-shadow);
+  }
+  .terms-item:last-child{ border-bottom:none; }
+  .terms-item b{
+    color:var(--seal); font-family:var(--font-display); font-size:14.5px;
+    display:block; margin-bottom:3px;
+  }
+  .terms-check-row{
+    display:flex; align-items:flex-start; gap:9px; font-size:13.5px; color:var(--ink-soft);
+    margin:4px 0 6px; cursor:pointer; line-height:1.5; font-weight:600;
+  }
+  .terms-check-row input{
+    margin-top:3px; width:17px; height:17px; flex-shrink:0; accent-color: var(--seal);
+  }
+  .btn-primary:disabled{ opacity:0.4; box-shadow:none; cursor:not-allowed; }
+  .btn-primary:disabled:active{ transform:none; }
+
   /* ---------- 그룹 지도 화면 ---------- */
   .group-topbar{
     display:flex; align-items:center; gap:10px; margin-bottom:10px;
@@ -461,7 +491,7 @@ function handlePinRealtimeEvent(payload){
       if(state.view === 'list') renderStoryList();
       updateGroupCountText();
       if(payload.new.author_name !== state.profile.name){
-        showToast(`${payload.new.author_name}님이 새 이야기를 남겼어요!`);
+        showToast(`${payload.new.author_name}님이 새 이야기를 새겼다네!`);
       }
     }
   }else if(payload.eventType === 'UPDATE'){
@@ -476,7 +506,7 @@ function handlePinRealtimeEvent(payload){
 }
 function updateGroupCountText(){
   const el = document.querySelector('.group-topbar-title p');
-  if(el) el.textContent = `이야기 ${state.pins.length}개 · 멤버 ${state.members.length}명`;
+  if(el) el.textContent = `이야기 ${state.pins.length}편 · 벗 ${state.members.length}명`;
 }
 
 function uid(){
@@ -520,6 +550,14 @@ async function init(){
     lsSet('jamyeo_profile', state.profile);
   }
   state.myGroups = lsGet('jamyeo_my_groups') || [];
+
+  if(!lsGet('jamyeo_agreed_terms')){
+    renderTermsGate();
+    return;
+  }
+  proceedAfterTerms();
+}
+function proceedAfterTerms(){
   if(!state.profile || !state.profile.name){
     renderNameSetup();
   }else{
@@ -527,17 +565,62 @@ async function init(){
   }
 }
 
+/* ================= 화면: 이용 약속 (첫 접속 시 한 번) ================= */
+function renderTermsGate(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="center-screen">
+      <p class="eyebrow">아직 봉인되어 있는 지도</p>
+      <h1 class="app-title"><span class="seal-part">잼얘</span>여지도</h1>
+      <div class="big-seal">封</div>
+      <p class="app-sub">두루마리를 펼치기 전에, 오래전부터 이 지도 가장자리에 새겨져 있던 다섯 가지를 먼저 읽어주세요.</p>
+      <div class="fold-divider"></div>
+
+      <div class="terms-list">
+        <div class="terms-item"><b>하나 · 우리 편</b>이 지도는 초대장을 지닌 자들끼리만 함께 보는 것이니, 그 표식(초대 코드)은 믿을 수 있는 벗에게만 전하시게.</div>
+        <div class="terms-item"><b>둘 · 평화</b>서로 놀리는 것은 정情이거니와, 뒤에서 몰래 저격하는 것은 삼가시게.</div>
+        <div class="terms-item"><b>셋 · 열린 수정</b>이 지도 위에 새긴 글은 그 누구든 고치고 지울 수 있으니, 장난은 가벼이 하고 믿음은 두터이 하시게.</div>
+        <div class="terms-item"><b>넷 · 그래도 선은 있다</b>벗들끼리 주고받는 욕 몇 마디, 애정 어린 저격이야 흠이 되지 않으나 — 참으로 나쁜 말과 옳지 않은 것만은 이 지도에 새기지 마시게.</div>
+        <div class="terms-item"><b>다섯 · 영원하지 않음</b>이 지도는 벗들이 재미 삼아 그린 것이라, 언젠가 사라질 수도 있으니 — 참으로 소중한 순간은 사진첩에도 따로 새겨두시게.</div>
+      </div>
+
+      <label class="terms-check-row">
+        <input type="checkbox" id="termsCheckbox" onchange="toggleTermsButton()" />
+        <span>다섯 가지 모두 마음에 새겼어요</span>
+      </label>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="agreeBtn" onclick="submitAgreeTerms()" disabled>🔖 인장을 찍고 지도 펼치기</button>
+      </div>
+    </div>
+  `;
+}
+function toggleTermsButton(){
+  const cb = document.getElementById('termsCheckbox');
+  const btn = document.getElementById('agreeBtn');
+  if(cb && btn) btn.disabled = !cb.checked;
+}
+function submitAgreeTerms(){
+  const btn = document.getElementById('agreeBtn');
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = '쿵, 봉인 해제! 🗺️';
+  }
+  lsSet('jamyeo_agreed_terms', true);
+  setTimeout(()=>{ proceedAfterTerms(); }, 500);
+}
+
 /* ================= 화면: 이름 설정 ================= */
 function renderNameSetup(){
   const app = document.getElementById('app');
   app.innerHTML = `
     <div class="center-screen">
-      <p class="eyebrow">잼얘여지도에 오신 것을 환영합니다</p>
+      <p class="eyebrow">잼얘여지도에 처음 발을 들이셨군</p>
       <h1 class="app-title"><span class="seal-part">잼얘</span>여지도</h1>
-      <p class="app-sub">친구들과 함께, 다녔던 곳의 재미있는 이야기를 지도 위에 남겨보세요.</p>
+      <p class="app-sub">벗들과 함께 두루 다니며 겪은 재미난 이야기를, 이 지도 위에 새겨보시게.</p>
       <div class="fold-divider"></div>
 <div class="field">
-  <label for="nameInput">지도 위에서 쓸 이름</label>
+  <label for="nameInput">지도 위에 새길 그대의 이름</label>
 
   <input
     type="text"
@@ -547,14 +630,14 @@ function renderNameSetup(){
   />
 
   <div class="helper-text" style="margin-top:8px; line-height:1.6;">
-    💡 게스트 모드 또는 시크릿 브라우징에서는 이름이 저장되지 않습니다.<br>
-    이름은 나중에 변경할 수 있습니다.
+    💡 게스트 모드나 시크릿 브라우징에서는 이름이 남지 않는다네.<br>
+    이름은 언제든 다시 고쳐 쓸 수 있으니 염려 마시게.
   </div>
 
   <div class="error-text" id="nameError" style="display:none;"></div>
 </div>
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="submitName()">시작하기</button>
+        <button class="btn btn-primary" onclick="submitName()">여정 시작하기</button>
       </div>
     </div>
   `;
@@ -567,7 +650,7 @@ async function submitName(){
   if(!val){ err.textContent = '이름을 입력해주세요.'; err.style.display='block'; return; }
   state.profile = { name: val, userId: (state.profile && state.profile.userId) || generateUserId() };
   lsSet('jamyeo_profile', state.profile);
-  showToast(`반가워요, ${val}님!`);
+  showToast(`반갑네, ${val}!`);
   renderHome();
 }
 
@@ -581,12 +664,12 @@ function renderChangeName(){
     <div class="back-row">
       <button class="icon-btn" onclick="renderHome()">←</button>
       <h2 style="font-family:var(--font-display); font-size:19px; margin:0;">
-        이름 변경
+        이름 고쳐 쓰기
       </h2>
     </div>
 
     <div class="field">
-      <label for="changeNameInput">새 이름</label>
+      <label for="changeNameInput">새로 쓸 이름</label>
 
       <input
         type="text"
@@ -596,8 +679,8 @@ function renderChangeName(){
       />
 
       <div class="helper-text" style="margin-top:8px; line-height:1.6;">
-        💡 이름을 바꾸면 내가 참여한 모든 지도의 멤버 표시와, 예전에 내가 남긴 이야기의 작성자 이름도 함께 바뀌어요.<br>
-        같은 이름을 쓰는 다른 사람의 기록에는 전혀 영향을 주지 않아요.
+        💡 이름을 고쳐 쓰면 내가 함께한 모든 지도의 표시와, 예전에 새긴 이야기의 지은이 이름도 함께 바뀐다네.<br>
+        같은 이름을 쓰는 다른 이의 기록에는 티끌만큼도 영향이 없으니 염려 마시게.
       </div>
       <div
         class="error-text"
@@ -608,7 +691,7 @@ function renderChangeName(){
 
     <div class="btn-row">
       <button class="btn btn-primary" id="changeNameSubmitBtn" onclick="submitChangeName()">
-        저장
+        새로 새기기
       </button>
     </div>
   `;
@@ -645,15 +728,15 @@ async function submitChangeName(){
 
   const btn = document.getElementById('changeNameSubmitBtn');
   btn.disabled = true;
-  btn.textContent = '변경하는 중…';
+  btn.textContent = '새기는 중…';
 
   const newName = val;
   const ok = await dbRenameEverywhere(state.profile.userId, newName);
 
   if(!ok){
     btn.disabled = false;
-    btn.textContent = '저장';
-    err.textContent = '이름 변경에 실패했어요: ' + (state.lastDbError || '알 수 없는 오류');
+    btn.textContent = '새로 새기기';
+    err.textContent = '이름을 고쳐 쓰지 못했다네: ' + (state.lastDbError || '알 수 없는 오류');
     err.style.display = 'block';
     return;
   }
@@ -666,7 +749,7 @@ async function submitChangeName(){
   state.members.forEach(m => { if(m.user_id === state.profile.userId) m.name = newName; });
   state.pins.forEach(p => { if(p.user_id === state.profile.userId) p.author_name = newName; });
 
-  showToast('이름을 "' + newName + '"(으)로 바꿨어요!');
+  showToast('이름을 "' + newName + '"(으)로 고쳐 새겼다네!');
   renderHome();
 
 }
@@ -676,24 +759,24 @@ async function renderHome(){
   if(state.realtimeChannel){ sb.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
   const app = document.getElementById('app');
   app.innerHTML = `
-    <p class="eyebrow">${escapeHtml(state.profile.name)}님의 지도첩</p>
+    <p class="eyebrow">${escapeHtml(state.profile.name)}의 지도 보따리</p>
     <h1 class="app-title"><span class="seal-part">잼얘</span>여지도</h1>
   `;
-  app.innerHTML += `<p class="app-sub">그룹마다 새로운 지도가 펼쳐져요. 친구들을 초대해보세요.</p>`;
+  app.innerHTML += `<p class="app-sub">무리마다 새 지도가 펼쳐지니, 벗들을 불러들이시게.</p>`;
   app.innerHTML += configWarningBanner();
   app.innerHTML += `<div class="fold-divider"></div>`;
-  app.innerHTML += `<div id="groupList"><p class="helper-text">지도를 불러오는 중…</p></div>`;
+  app.innerHTML += `<div id="groupList"><p class="helper-text">지도를 펼쳐보는 중…</p></div>`;
   app.innerHTML += `
 <div class="btn-row">
-  <button class="btn btn-primary" onclick="renderCreateGroup()">+ 새 지도 만들기</button>
-  <button class="btn btn-secondary" onclick="renderJoinGroup()">지도 참가하기</button>
-  <button class="btn btn-secondary" onclick="renderChangeName()">이름 변경</button>
+  <button class="btn btn-primary" onclick="renderCreateGroup()">+ 새 지도 그리기</button>
+  <button class="btn btn-secondary" onclick="renderJoinGroup()">지도 함께하기</button>
+  <button class="btn btn-secondary" onclick="renderChangeName()">이름 고쳐 쓰기</button>
 </div>
 `;
 
   const listEl = document.getElementById('groupList');
   if(state.myGroups.length === 0){
-    listEl.innerHTML = `<div class="empty-box">아직 참여한 지도가 없어요.<br/>새 지도를 만들거나, 친구의 초대 코드로 참가해보세요.</div>`;
+    listEl.innerHTML = `<div class="empty-box">아직 함께한 지도가 없다네.<br/>새 지도를 그리거나, 벗의 초대 코드로 들어와 보시게.</div>`;
     return;
   }
   const groups = await Promise.all(state.myGroups.map(async g => {
@@ -712,8 +795,8 @@ async function renderHome(){
       <div class="group-card-title">${escapeHtml(g.name)}</div>
       <div class="group-card-meta">초대 코드 ${g.code}</div>
       <div class="group-card-foot">
-        <span class="stat-pill">이야기 ${g.pinCount}개</span>
-        <span class="stat-pill">멤버 ${g.memberCount}명</span>
+        <span class="stat-pill">이야기 ${g.pinCount}편</span>
+        <span class="stat-pill">벗 ${g.memberCount}명</span>
       </div>
     </div>
   `).join('');
@@ -732,17 +815,17 @@ function renderCreateGroup(){
   app.innerHTML = `
     <div class="back-row">
       <button class="icon-btn" onclick="renderHome()">←</button>
-      <h2 style="font-family:var(--font-display); font-size:19px; margin:0;">새 지도 만들기</h2>
+      <h2 style="font-family:var(--font-display); font-size:19px; margin:0;">새 지도 그리기</h2>
     </div>
     ${configWarningBanner()}
     <div class="field">
-      <label for="groupNameInput">지도(그룹) 이름</label>
+      <label for="groupNameInput">이 지도의 이름</label>
       <input type="text" id="groupNameInput" placeholder="예: 우리들의 제주도 여행" maxlength="24" />
       <div class="error-text" id="groupNameError" style="display:none;"></div>
     </div>
-    <p class="helper-text">지도를 만들면 초대 코드가 생겨요. 친구에게 코드를 보내주면 같은 지도를 함께 볼 수 있어요.</p>
+    <p class="helper-text">지도를 그리면 초대 코드가 함께 새겨진다네. 그 코드를 벗에게 전하면 같은 지도를 함께 볼 수 있지.</p>
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="submitCreateGroup()">지도 만들기</button>
+      <button class="btn btn-primary" onclick="submitCreateGroup()">지도 그리기</button>
     </div>
   `;
   document.getElementById('groupNameInput').focus();
@@ -765,7 +848,7 @@ async function submitCreateGroup(){
   }
   state.myGroups.push({code, name:val});
   lsSet('jamyeo_my_groups', state.myGroups);
-  showToast('지도가 만들어졌어요!');
+  showToast('지도가 새로 그려졌다네!');
   await openGroup(code, true);
 }
 
@@ -775,16 +858,16 @@ function renderJoinGroup(){
   app.innerHTML = `
     <div class="back-row">
       <button class="icon-btn" onclick="renderHome()">←</button>
-      <h2 style="font-family:var(--font-display); font-size:19px; margin:0;">지도 참가하기</h2>
+      <h2 style="font-family:var(--font-display); font-size:19px; margin:0;">지도 함께하기</h2>
     </div>
     ${configWarningBanner()}
     <div class="field">
-      <label for="joinCodeInput">친구에게 받은 초대 코드</label>
+      <label for="joinCodeInput">벗에게 받은 초대 코드</label>
       <input type="text" id="joinCodeInput" placeholder="예: 7K2QXM" maxlength="6" style="text-transform:uppercase; letter-spacing:0.1em;" />
       <div class="error-text" id="joinCodeError" style="display:none;"></div>
     </div>
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="submitJoinGroup()">참가하기</button>
+      <button class="btn btn-primary" onclick="submitJoinGroup()">함께하기</button>
     </div>
   `;
   const input = document.getElementById('joinCodeInput');
@@ -813,14 +896,14 @@ async function submitJoinGroup(){
     state.myGroups.push({code, name:group.name});
     lsSet('jamyeo_my_groups', state.myGroups);
   }
-  showToast(`"${group.name}" 지도에 참가했어요!`);
+  showToast(`"${group.name}" 지도에 함께하게 되었다네!`);
   await openGroup(code, true);
 }
 
 /* ================= 화면: 그룹 지도 ================= */
 async function openGroup(code, justJoined=false){
   const group = await dbGetGroup(code);
-  if(!group){ showToast('지도를 불러올 수 없어요.'); renderHome(); return; }
+  if(!group){ showToast('지도를 펼치지 못했다네.'); renderHome(); return; }
   state.currentGroup = group;
   state.view = 'map';
   state.justJoined = justJoined;
@@ -840,17 +923,17 @@ function renderGroupScreen(){
       <button class="icon-btn" onclick="renderHome()">←</button>
       <div class="group-topbar-title">
         <h2>${escapeHtml(g.name)}</h2>
-        <p>이야기 ${state.pins.length}개 · 멤버 ${state.members.length}명</p>
+        <p>이야기 ${state.pins.length}편 · 벗 ${state.members.length}명</p>
       </div>
       <button class="icon-btn" onclick="toggleInvitePanel()" title="초대 코드">✉</button>
     </div>
 
     <div id="invitePanel" style="display:${state.justJoined ? 'block':'none'};">
       <div class="invite-panel">
-        친구를 초대하려면 이 코드를 알려주세요.<br/>
+        벗을 불러들이려면 이 표식(코드)을 전하시게.<br/>
         <span class="invite-code">${g.code}</span>
         <div>
-          <button class="btn btn-ghost" onclick="copyInviteCode('${g.code}')">코드 복사</button>
+          <button class="btn btn-ghost" onclick="copyInviteCode('${g.code}')">코드 옮겨 적기</button>
         </div>
       </div>
     </div>
@@ -884,9 +967,9 @@ function toggleInvitePanel(){
 async function copyInviteCode(code){
   try{
     await navigator.clipboard.writeText(code);
-    showToast('초대 코드를 복사했어요!');
+    showToast('코드를 옮겨 적었다네!');
   }catch(e){
-    showToast('코드: '+code+' (직접 복사해주세요)');
+    showToast('코드: '+code+' (손수 옮겨 적어주시게)');
   }
 }
 async function switchView(view){
@@ -908,7 +991,7 @@ function renderMapView(){
   const area = document.getElementById('viewArea');
   area.innerHTML = `
     <div id="mapWrap">
-      <div class="map-hint" id="mapHint">지도를 탭해서 이야기를 남겨보세요</div>
+      <div class="map-hint" id="mapHint">지도를 짚어 이야기를 새겨보시게</div>
       <div id="mapCanvas"></div>
       <button class="locate-btn" onclick="locateMe()" title="내 위치로 이동">◎</button>
     </div>
@@ -952,10 +1035,10 @@ function addPinMarker(pin){
 }
 
 function locateMe(){
-  if(!navigator.geolocation){ showToast('위치 정보를 사용할 수 없어요.'); return; }
+  if(!navigator.geolocation){ showToast('이 기기에서는 위치를 알 수 없다네.'); return; }
   navigator.geolocation.getCurrentPosition(
     pos => { state.leafletMap.setView([pos.coords.latitude, pos.coords.longitude], 15); },
-    () => showToast('위치 정보를 가져오지 못했어요.')
+    () => showToast('그대의 위치를 찾지 못했다네.')
   );
 }
 
@@ -976,7 +1059,7 @@ function renderListView(){
 function renderStoryList(){
   const listArea = document.getElementById('storyListArea');
   if(state.pins.length === 0){
-    listArea.innerHTML = `<div class="empty-box">아직 이야기가 없어요.<br/>지도 탭에서 첫 이야기를 남겨보세요!</div>`;
+    listArea.innerHTML = `<div class="empty-box">아직 새겨진 이야기가 없다네.<br/>지도 탭에서 첫 이야기를 새겨보시게!</div>`;
     return;
   }
   const q = state.listSearch.trim().toLowerCase();
@@ -999,7 +1082,7 @@ function renderStoryList(){
       <div class="story-caption">${escapeHtml(pin.caption)}</div>
       ${pin.tags && pin.tags.length ? `<div class="tag-row">${pin.tags.map(t=>`<span class="tag-chip">${escapeHtml(t)}</span>`).join('')}</div>` : ''}
       <div class="story-foot">
-        <span>${escapeHtml(sealInitial(pin.author_name))} · ${escapeHtml(pin.author_name)}${pin.edited_at ? ' · 수정됨' : ''}</span>
+        <span>${escapeHtml(sealInitial(pin.author_name))} · ${escapeHtml(pin.author_name)}${pin.edited_at ? ' · 고쳐 새김' : ''}</span>
         <span>${fmtDate(pin.created_at)}</span>
       </div>
     </div>
@@ -1020,38 +1103,38 @@ function openPinModal(lat, lng, existingPin=null){
   overlay.innerHTML = `
     <div class="modal-card">
       <div class="modal-head">
-        <h3>${isEdit ? '이야기 수정하기' : '이야기 남기기'}</h3>
+        <h3>${isEdit ? '이야기 고쳐 새기기' : '이야기 새기기'}</h3>
         <button class="modal-close" onclick="closePinModal()">×</button>
       </div>
 
       <div class="field">
-        <label for="pinTitle">제목 (선택)</label>
+        <label for="pinTitle">제목 (없어도 무방하네)</label>
         <input type="text" id="pinTitle" maxlength="30" placeholder="예: 우다다 뛰던 강아지" value="${isEdit ? escapeHtml(existingPin.title || '') : ''}" />
       </div>
 
       <div class="photo-input-area" id="photoArea">
         ${ (isEdit && existingPin.photo) ? `
           <img src="${existingPin.photo}" class="photo-preview" alt="선택한 사진" />
-          <button type="button" class="btn btn-ghost" onclick="clearPhoto()">사진 제거</button>
+          <button type="button" class="btn btn-ghost" onclick="clearPhoto()">사진 떼어내기</button>
         ` : `
           <input type="file" accept="image/*" id="photoInput" style="display:none" onchange="handlePhotoSelect(event)" />
-          <button type="button" class="btn btn-ghost" onclick="document.getElementById('photoInput').click()">📷 사진 추가</button>
+          <button type="button" class="btn btn-ghost" onclick="document.getElementById('photoInput').click()">📷 사진 붙이기</button>
         `}
       </div>
 
       <div class="field">
-        <label for="pinNote">무슨 일이 있었나요?</label>
-        <textarea id="pinNote" placeholder="편하게 적어보세요.">${isEdit ? escapeHtml(existingPin.caption || '') : ''}</textarea>
+        <label for="pinNote">무슨 일이 있었는가?</label>
+        <textarea id="pinNote" placeholder="편히 적어보시게.">${isEdit ? escapeHtml(existingPin.caption || '') : ''}</textarea>
       </div>
 
       <div class="field">
         <label>태그</label>
         <div class="tag-edit-row" id="tagEditRow"></div>
-        <input type="text" id="tagAddInput" placeholder="태그 입력 후 Enter" maxlength="8" />
+        <input type="text" id="tagAddInput" placeholder="태그를 적고 Enter" maxlength="8" />
       </div>
 
       <div class="btn-row">
-        <button class="btn btn-primary" onclick="savePin()">${isEdit ? '수정 완료' : '이야기 저장'}</button>
+        <button class="btn btn-primary" onclick="savePin()">${isEdit ? '고쳐 새기기' : '이야기 새기기'}</button>
       </div>
     </div>
   `;
@@ -1094,14 +1177,14 @@ function handlePhotoSelect(e){
       <img src="${base64}" class="photo-preview" alt="선택한 사진" />
       <button type="button" class="btn btn-ghost" onclick="clearPhoto()">사진 제거</button>
     `;
-  }).catch(()=> showToast('사진을 불러오지 못했어요.'));
+  }).catch(()=> showToast('사진을 불러오지 못했다네.'));
 }
 function clearPhoto(){
   state.pendingPhoto = null;
   const area = document.getElementById('photoArea');
   area.innerHTML = `
     <input type="file" accept="image/*" id="photoInput" style="display:none" onchange="handlePhotoSelect(event)" />
-    <button type="button" class="btn btn-ghost" onclick="document.getElementById('photoInput').click()">📷 사진 추가</button>
+    <button type="button" class="btn btn-ghost" onclick="document.getElementById('photoInput').click()">📷 사진 붙이기</button>
   `;
 }
 function resizeImageFile(file, maxWidth=640, quality=0.65){
@@ -1130,7 +1213,7 @@ async function savePin(){
   const caption = document.getElementById('pinNote').value.trim();
 
   if(!caption && !state.pendingPhoto){
-    showToast('이야기나 사진을 하나는 남겨주세요.');
+    showToast('이야기나 사진을 하나는 남겨주시게.');
     return;
   }
 
@@ -1146,11 +1229,11 @@ async function savePin(){
       edited_at: new Date().toISOString()
     };
     const updated = await dbUpdatePin(state.editingPinId, updates);
-    if(!updated){ showToast('수정에 실패했어요: ' + (state.lastDbError || '알 수 없는 오류')); return; }
+    if(!updated){ showToast('고쳐 새기지 못했어요: ' + (state.lastDbError || '알 수 없는 오류')); return; }
     const idx = state.pins.findIndex(p => p.id === updated.id);
     if(idx !== -1) state.pins[idx] = updated;
     closePinModal();
-    showToast('이야기를 수정했어요!');
+    showToast('이야기를 고쳐 새겼다네!');
   }else{
     const newPin = {
       group_code: state.currentGroup.code,
@@ -1164,11 +1247,11 @@ async function savePin(){
       photo: state.pendingPhoto
     };
     const inserted = await dbInsertPin(newPin);
-    if(!inserted){ showToast('저장에 실패했어요: ' + (state.lastDbError || '알 수 없는 오류')); return; }
+    if(!inserted){ showToast('새기지 못했어요: ' + (state.lastDbError || '알 수 없는 오류')); return; }
     state.pins.push(inserted);
     addPinMarker(inserted);
     closePinModal();
-    showToast('지도에 이야기를 새겼어요!');
+    showToast('지도에 이야기를 새겼다네!');
   }
 
   updateGroupCountText();
@@ -1200,17 +1283,17 @@ function openPinDetail(pinId){
           <span class="seal-row"><span class="seal seal-sm">${escapeHtml(sealInitial(pin.author_name))}</span> ${escapeHtml(pin.author_name)}</span>
           <span>${fmtDate(pin.created_at)}</span>
         </div>
-        ${pin.edited_at ? `<div class="helper-text" style="margin-top:8px;">✎ ${escapeHtml(pin.edited_by || '')}님이 ${fmtDate(pin.edited_at)}에 수정했어요</div>` : ''}
+        ${pin.edited_at ? `<div class="helper-text" style="margin-top:8px;">✎ ${escapeHtml(pin.edited_by || '')}님이 ${fmtDate(pin.edited_at)}에 고쳐 새겼다네</div>` : ''}
       </div>
      <div class="btn-row">
   <button class="btn btn-secondary"
     onclick="openEditPinModal('${pin.id}')">
-    ✎ 수정하기
+    ✎ 고쳐 새기기
   </button>
 
   <button class="btn btn-ghost"
     onclick="deletePin('${pin.id}')">
-    🗑 삭제하기
+    🗑 지우기
   </button>
 </div>
     </div>
@@ -1251,12 +1334,12 @@ function closePinDetailModal(){
 // ================= 삭제 기능 =================
 async function deletePin(pinId){
 
-  if(!confirm("이 메모를 삭제하시겠습니까?")) return;
+  if(!confirm("이 이야기를 정말 지우시겠는가?")) return;
 
   const ok = await dbDeletePin(pinId);
 
   if(!ok){
-    showToast("삭제에 실패했어요.");
+    showToast("지우지 못했어요.");
     return;
   }
 
@@ -1273,7 +1356,7 @@ async function deletePin(pinId){
     renderStoryList();
   }
 
-  showToast("메모를 삭제했어요!");
+  showToast("이야기를 지웠다네!");
 }
 
 
@@ -1282,3 +1365,4 @@ init();
 </script>
 </body>
 </html>
+
